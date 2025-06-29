@@ -92,6 +92,7 @@ SMALL_MODEL = os.environ.get("SMALL_MODEL", "gpt-4.1-mini")
 
 # List of OpenAI models
 OPENAI_MODELS = [
+    "o4-mini",
     "o3-mini",
     "o1",
     "o1-mini",
