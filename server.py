@@ -81,13 +81,17 @@ app = FastAPI()
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+# Add Azure OpenAI Service credentials
+AZURE_API_KEY = os.environ.get("AZURE_API_KEY")
+AZURE_API_BASE = os.environ.get("AZURE_API_BASE")
+AZURE_API_VERSION = os.environ.get("AZURE_API_VERSION")
 
 # Get preferred provider (default to openai)
 PREFERRED_PROVIDER = os.environ.get("PREFERRED_PROVIDER", "openai").lower()
 
 # Get model mapping configuration from environment
 # Default to latest OpenAI models if not set
-BIG_MODEL = os.environ.get("BIG_MODEL", "gpt-4.1")
+BIG_MODEL = os.environ.get("BIG_MODEL", "o4-mini")
 SMALL_MODEL = os.environ.get("SMALL_MODEL", "gpt-4.1-mini")
 
 # List of OpenAI models
@@ -540,10 +544,10 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
     
     # Create LiteLLM request dict
     litellm_request = {
-        "model": anthropic_request.model,  # t understands "anthropic/claude-x" format
+        "model": "azure/o4-mini",  # t understands "anthropic/claude-x" format
         "messages": messages,
         "max_tokens": max_tokens,
-        "temperature": anthropic_request.temperature,
+        # "temperature": anthropic_request.temperature,
         "stream": anthropic_request.stream,
     }
     
@@ -1104,8 +1108,13 @@ async def create_message(
         # Convert Anthropic request to LiteLLM format
         litellm_request = convert_anthropic_to_litellm(request)
         
-        # Determine which API key to use based on the model
-        if request.model.startswith("openai/"):
+        # Determine which API credentials to use based on the model
+        if request.model.startswith("azure/"):
+            litellm_request["api_key"] = AZURE_API_KEY
+            litellm_request["api_base"] = AZURE_API_BASE
+            litellm_request["api_version"] = AZURE_API_VERSION
+            logger.debug(f"Using Azure OpenAI Service for model: {request.model}")
+        elif request.model.startswith("openai/"):
             litellm_request["api_key"] = OPENAI_API_KEY
             logger.debug(f"Using OpenAI API key for model: {request.model}")
         elif request.model.startswith("gemini/"):
@@ -1322,7 +1331,7 @@ async def create_message(
                     error_details[key] = str(value)
         
         # Log all error details
-        logger.error(f"Error processing request: {json.dumps(error_details, indent=2)}")
+        logger.error(f"Error processing request: {str(error_details)}")
         
         # Format error for response
         error_message = f"Error: {str(e)}"
